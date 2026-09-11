@@ -4,20 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Lead extends Model
+class Followup extends Model
 {
-    protected $fillable = [
 
-        'name',
+    protected $table = 'follow_ups';
+    
+    protected $fillable = [
+        'lead_id',
         'customer_id',
-        'email',
-        'phone',
-        'company',
-        'source',
+        'follow_up_at',
         'status',
         'notes',
-        'is_converted',
     ];
+
+
+    public function lead()
+    {
+        return $this->belongsTo(Lead::class);
+    }
 
     public function customer()
     {

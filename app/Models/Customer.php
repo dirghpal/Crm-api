@@ -17,4 +17,10 @@ class Customer extends Model
         'pincode',
         'status',
     ];
+
+
+    public function leads()
+    {
+        return $this->hasMany(Lead::class);
+    }
 }

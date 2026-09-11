@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Exception\ApiStatusZeroException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Customer;
 use App\Models\Lead;
+use Illuminate\Support\Facades\DB;
+
 
 class LeadController extends Controller
 {
@@ -80,7 +83,7 @@ class LeadController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $lead = Lead::find($request->post('id'));
+            $lead = Lead::with('customer')->find($request->post('id'));
 
             if (!$lead) {
                 throw new ApiStatusZeroException('lead not found');
@@ -153,4 +156,56 @@ class LeadController extends Controller
         });
     }
 
+    public function convert(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'id' => 'required|integer|exists:leads,id',
+            ]);
+
+            $lead = Lead::find($request->post('id'));
+
+            if (!$lead) {
+                throw new ApiStatusZeroException('lead not found');
+            }
+
+            if ($lead->is_converted == 1) {
+                throw new ApiStatusZeroException('lead already converted');
+            }
+
+            if ($lead->status !== 'qualified') {
+                throw new ApiStatusZeroException(
+                    'only qualified lead con be converted'
+                );
+            }
+
+            DB::beginTransaction();
+
+            try {
+
+                $customer = Customer::create([
+                    'name' => $lead->name,
+                    'email' => $lead->email,
+                    'phone' => $lead->phone,
+                    'company' => $lead->company,
+                    'status' => 1,
+                ]);
+
+                $lead->customer_id = $customer->id;
+                $lead->is_converted = 1;
+                $lead->save();
+
+                DB::commit();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            $this->response['msg'] = 'lead convert successfully';
+            $this->response['data'] = [
+                'lead' => $lead,
+                'customer' => $customer,
+            ];
+        });
+    }
 }

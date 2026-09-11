@@ -94,7 +94,8 @@ class CustomerController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $customer = Customer::find($request->post('id'));
+            $customer = Customer::with('leads')
+                ->find($request->post('id'));
 
             if (!$customer) {
                 throw new ApiStatusZeroException('Customer not found');
@@ -110,7 +111,7 @@ class CustomerController extends Controller
     public function update(Request $request)
     {
         return handleApiRequest(function () use ($request) {
-
+ 
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'nullable|email',
