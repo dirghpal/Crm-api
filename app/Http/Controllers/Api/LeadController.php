@@ -51,12 +51,18 @@ class LeadController extends Controller
             $request->validate([
                 'name' => 'nullable|string',
                 'status' => 'nullable|string',
+                'company' => 'nullable|string',
                 'per_page' => 'nullable|integer|min:1|max:100',
+                'source' => 'nullable|in:website,referral,social_media,advertisement,other',
+                'sort_by' => 'nullable|in:id,name,email,company,status,created_at',
+                'sort_order' => 'nullable|in:asc,desc',
             ]);
 
             $perpage = $request->get('per_Page', 10);
+            $sortBy = $request->post('sort_by', 'id');
+            $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = Lead::orderBy('id', 'desc');
+            $query = Lead::orderBy($sortBy, $sortOrder);
 
             if ($request->post('name') !== null) {
                 $query->where('name', 'like', '%' . $request->post('name') . '%');
@@ -64,6 +70,13 @@ class LeadController extends Controller
 
             if ($request->post('status') !== null) {
                 $query->where('status', $request->post('status'));
+            }
+
+            if ($request->post('is_converted') !== null) {
+                $query->where('is_converted', $request->post('is_converted'));
+            }
+            if ($request->post('source') !== null) {
+                $query->where('source', $request->post('source'));
             }
 
             $leads = $query->paginate($perpage);

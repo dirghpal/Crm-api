@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Exception\ApiStatusZeroException;
 use App\Http\Controllers\Controller;
-use App\Models\Followup;
+use App\Models\Activity;
+use App\Models\Lead;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 
-class FollowUpController extends Controller
+class ActivityController extends Controller
 {
 
     public function save(Request $request)
@@ -17,9 +19,11 @@ class FollowUpController extends Controller
             $request->validate([
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
-                'follow_up_at' => 'required|date',
+                'type' => 'required|in:call,meeting,email,note',
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'activity_at' => 'required|date',
                 'status' => 'nullable|in:pending,completed,cancelled',
-                'notes' => 'nullable|string',
             ]);
 
             if (!$request->post('lead_id') && !$request->post('customer_id')) {
@@ -30,24 +34,28 @@ class FollowUpController extends Controller
 
             if ($request->post('lead_id') && $request->post('customer_id')) {
                 throw new ApiStatusZeroException(
-                    'follow-up can belong to lead or customer'
+                    'activity can belong to lead or customer'
                 );
             }
 
-            $followUp = FollowUp::create([
+            $activity = Activity::create([
                 'lead_id' => $request->post('lead_id'),
                 'customer_id' => $request->post('customer_id'),
-                'follow_up_at' => $request->post('follow_up_at'),
+                'type' => $request->post('type'),
+                'title' => $request->post('title'),
+                'description' => $request->post('description'),
+                'activity_at' => $request->post('activity_at'),
                 'status' => $request->post('status', 'pending'),
-                'notes' => $request->post('notes'),
             ]);
 
-            $this->response['msg'] = 'follow-up saved successfully';
-            $this->response['data'] = $followUp;
+            $this->response['msg'] = 'activity saved successfully';
+            $this->response['data'] = $activity;
 
             return response()->json($this->response);
         });
     }
+
+
 
     public function list(Request $request)
     {
@@ -56,19 +64,15 @@ class FollowUpController extends Controller
             $request->validate([
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
+                'type' => 'nullable|in:call,meeting,email,note',
                 'status' => 'nullable|in:pending,completed,cancelled',
                 'per_page' => 'nullable|integer|min:1|max:100',
-                'overdue' => 'nullable|in:0,1',
-                'sort_by' => 'nullable|in:id,follow_up_at,status,created_at',
-                'sort_order' => 'nullable|in:asc,desc',
             ]);
 
             $perPage = $request->get('per_page', 10);
-            $sortBy = $request->post('sort_by', 'id');
-            $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = FollowUp::with('lead', 'customer')
-                ->orderBy($sortBy, $sortOrder);
+            $query = Activity::with('lead', 'customer')
+                ->orderBy('id', 'desc');
 
             if ($request->post('lead_id') !== null) {
                 $query->where('lead_id', $request->post('lead_id'));
@@ -78,96 +82,100 @@ class FollowUpController extends Controller
                 $query->where('customer_id', $request->post('customer_id'));
             }
 
+            if ($request->post('type') !== null) {
+                $query->where('type', $request->post('type'));
+            }
+
             if ($request->post('status') !== null) {
                 $query->where('status', $request->post('status'));
             }
-            if ($request->post('overdue') == 1) {
-                $query->where('follow_up_at', '<', now())
-                    ->where('status', 'pending');
-            }
 
-            $followUps = $query->paginate($perPage);
+            $activities = $query->paginate($perPage);
 
-            $this->response['msg'] = 'follow-up list';
-            $this->response['data'] = $followUps;
+            $this->response['msg'] = 'activity list';
+            $this->response['data'] = $activities;
 
             return response()->json($this->response);
         });
     }
-
 
     public function detail(Request $request)
     {
         return handleApiRequest(function () use ($request) {
 
             $request->validate([
-                'id' => 'required|integer'
+                'id' => 'required|integer',
             ]);
 
-            $followUp = Followup::with('lead', 'customer')
+            $activity = Activity::with('lead', 'customer')
                 ->find($request->post('id'));
 
-            if (!$followUp) {
-                throw new ApiStatusZeroException('follow-up not found');
+            if (!$activity) {
+                throw new ApiStatusZeroException('activity not found');
             }
 
-            $this->response['msg'] = 'follow-up detail';
-            $this->response['data'] = $followUp;
+            $this->response['msg'] = 'activity detail';
+            $this->response['data'] = $activity;
 
             return response()->json($this->response);
         });
     }
+
 
     public function update(Request $request)
     {
         return handleApiRequest(function () use ($request) {
 
             $request->validate([
-                'id' => 'required|integer|exists:follow_ups,id',
-                'follow_up_at' => 'required|data',
+                'id' => 'required|integer|exists:activities,id',
+                'type' => 'required|in:call,meeting,email,note',
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'activity_at' => 'required|date',
                 'status' => 'nullable|in:pending,completed,cancelled',
-                'notes' => 'nullable|string',
             ]);
 
-            $followUp = Followup::find($request->post('id'));
+            $activity = Activity::find($request->post('id'));
 
-            if (!$followUp) {
-                throw new ApiStatusZeroException('follow-up not found');
+            if (!$activity) {
+                throw new ApiStatusZeroException('activity not found');
             }
 
-            $followUp->follow_up_at = $request->post('follow_up_at');
-            $followUp->notes = $request->post('notes');
+            $activity->type = $request->post('type');
+            $activity->title = $request->post('titel');
+            $activity->description = $request->post('description');
+            $activity->activity_at = $request->post('activity_id');
 
             if ($request->post('status') !== null) {
-                $followUp->status = $request->post('status');
+                $activity->status = $request->post('status');
             }
-            $followUp->save();
 
-            $this->response['msg'] = 'follow-up update successfully';
-            $this->response['data'] = $followUp;
+            $activity->save();
+
+            $this->response['msg'] = 'activity updated successfully';
+            $this->response['data'] = $activity;
 
             return response()->json($this->response);
         });
     }
-
 
     public function delete(Request $request)
     {
         return handleApiRequest(function () use ($request) {
 
             $request->validate([
-                'id' => 'required|integer|exists:follow_ups,id',
+                'id' => 'required|integer|exists:activities,id',
             ]);
 
-            $followUp = FollowUp::find($request->post('id'));
+            $activity = Activity::find($request->post('id'));
 
-            if (!$followUp) {
-                throw new ApiStatusZeroException('follow-up not found');
+            if (!$activity) {
+                throw new ApiStatusZeroException('activity not found');
             }
 
-            $followUp->delete();
+            $activity->delete();
 
-            $this->response['msg'] = 'follow-up deleted successfully';
+            $this->response['msg'] = 'activity deleted successfully';
             $this->response['data'] = [];
 
             return response()->json($this->response);

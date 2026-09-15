@@ -54,12 +54,19 @@ class CustomerController extends Controller
                 'email' => 'nullable|email',
                 'phone' => 'nullable|string',
                 'status' => 'nullable|in:0,1',
+                'city' => 'nullable|string',
+                'state' => 'nullable|string',
+                'pincode' => 'nullable|string',
                 'per_page' => 'nullable|integer|min:1|max:100',
+                'sort_by' => 'nullable|in:id,name,email,created_at',
+                'sort_order' => 'nullable|in:asc,desc',
             ]);
 
             $perpage = $request->get('per_page', 10);
+            $sortBy = $request->post('sort_by', 'id');
+            $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = Customer::orderBy('id', 'desc');
+            $query = Customer::orderBy($sortBy, $sortOrder);
 
             if ($request->post('name') !== null) {
                 $query->where('name', 'like', '%' . $request->post('name') . '%');
@@ -75,6 +82,34 @@ class CustomerController extends Controller
 
             if ($request->post('status') !== null) {
                 $query->where('status', $request->post('status'));
+            }
+            if ($request->post('company') !== null) {
+                $query->where(
+                    'company',
+                    'like',
+                    '%' . $request->post('company') . '%'
+                );
+            }
+            if ($request->post('city') !== null) {
+                $query->where(
+                    'city',
+                    'like',
+                    '%' . $request->post('city') . '%'
+                );
+            }
+            if ($request->post('state') !== null) {
+                $query->where(
+                    'state',
+                    'like',
+                    '%' . $request->post('state') . '%'
+                );
+            }
+            if ($request->post('pincode') !== null) {
+                $query->where(
+                    'pincode',
+                    'like',
+                    '%' . $request->post('pincode') . '%'
+                );
             }
 
             $customer = $query->paginate($perpage);
@@ -111,7 +146,7 @@ class CustomerController extends Controller
     public function update(Request $request)
     {
         return handleApiRequest(function () use ($request) {
- 
+
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'nullable|email',
