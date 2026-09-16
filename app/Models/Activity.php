@@ -15,6 +15,7 @@ class Activity extends Model
         'description',
         'activity_at',
         'status',
+        'assigned_to',
     ];
 
     public function lead()
@@ -26,6 +27,8 @@ class Activity extends Model
     {
         return $this->belongsTo(Customer::class);
     }
-
-
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
 }

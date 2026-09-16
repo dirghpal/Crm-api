@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\Lead;
 use App\Models\Customer;
+use App\Models\Notification;
 use App\Exceptions\ApiStatusZeroException;
 use Illuminate\Foundation\Console\ApiInstallCommand;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class TaskController extends Controller
             $request->validate([
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'due_at' => 'required|date',
@@ -44,12 +46,21 @@ class TaskController extends Controller
             $task = Task::create([
                 'lead_id' => $request->post('lead_id'),
                 'customer_id' => $request->post('customer_id'),
+                'assigned_to' => $request->post('assigned_to'),
                 'title' => $request->post('title'),
                 'description' => $request->post('description'),
                 'due_at' => $request->post('due_at'),
                 'priority' => $request->post('priority', 'medium'),
                 'status' => $request->post('status', 'pending'),
             ]);
+
+            if ($task->assigned_to) {
+                Notification::create([
+                    'user_id' => $task->assigned_to,
+                    'title' => 'New Task Assigned',
+                    'message' => 'A new task has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'task saved successfully';
             $this->response['data'] = $task;
@@ -65,6 +76,7 @@ class TaskController extends Controller
             $request->validate([
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'priority' => 'nullable|in:low,medium,high',
                 'status' => 'nullable|in:pending,in_progress,completed,cancelled',
                 'per_page' => 'nullable|integer|min:1|max:100',
@@ -78,7 +90,7 @@ class TaskController extends Controller
             $sortBy = $request->post('sort_by', 'id');
             $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = Task::with('lead', 'customer')
+            $query = Task::with('lead', 'customer', 'assignedUser')
                 ->orderBy($sortBy, $sortOrder);
 
             if ($request->post('lead_id') !== null) {
@@ -100,6 +112,10 @@ class TaskController extends Controller
             if ($request->post('overdue') == 1) {
                 $query->where('due_at', '<', now())
                     ->whereNotIn('status', ['completed', 'cancelled']);
+            }
+
+            if ($request->post('assigned_to') !== null) {
+                $query->where('assigned_to', $request->post('assigned_to'));
             }
 
             $tasks = $query->paginate($perPage);
@@ -155,6 +171,7 @@ class TaskController extends Controller
             $task->title = $request->post('title');
             $task->description = $request->post('description');
             $task->due_at = $request->post('due_at');
+            $oldAssignedTo = $task->assigned_to;
 
             if ($request->post('priority') !== null) {
                 $task->priority = $request->post('priority');
@@ -165,6 +182,14 @@ class TaskController extends Controller
             }
 
             $task->save();
+
+            if ($task->assigned_to && $task->assigned_to != $oldAssignedTo) {
+                Notification::create([
+                    'user_id' => $task->assigned_to,
+                    'title' => 'Task Assigned',
+                    'message' => 'A new task has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'task updated successfully';
             $this->response['data'] = $task;
@@ -191,6 +216,76 @@ class TaskController extends Controller
 
             $this->response['msg'] = 'task deleted successfully';
             $this->response['data'] = [];
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myTasks(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'status' => 'nullable|in:pending,in_progress,completed,cancelled',
+                'priority' => 'nullable|in:low,medium,high',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->get('per_page', 10);
+
+            $query = Task::with('lead', 'customer', 'assignedUser')
+                ->where('assigned_to', $request->user()->id)
+                ->orderBy('id', 'desc');
+
+            if ($request->post('status') !== null) {
+                $query->where('status', $request->post('status'));
+            }
+
+            if ($request->post('priority') !== null) {
+                $query->where('priority', $request->post('priority'));
+            }
+
+            $tasks = $query->paginate($perPage);
+
+            $this->response['msg'] = 'my assigned tasks';
+            $this->response['data'] = $tasks;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myTasksSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my tasks summary';
+
+            $this->response['data'] = [
+                'total' => Task::where('assigned_to', $userId)->count(),
+
+                'pending' => Task::where('assigned_to', $userId)
+                    ->where('status', 'pending')
+                    ->count(),
+
+                'in_progress' => Task::where('assigned_to', $userId)
+                    ->where('status', 'in_progress')
+                    ->count(),
+
+                'completed' => Task::where('assigned_to', $userId)
+                    ->where('status', 'completed')
+                    ->count(),
+
+                'cancelled' => Task::where('assigned_to', $userId)
+                    ->where('status', 'cancelled')
+                    ->count(),
+
+                'overdue' => Task::where('assigned_to', $userId)
+                    ->where('due_at', '<', now())
+                    ->whereNotIn('status', ['completed', 'cancelled'])
+                    ->count(),
+            ];
 
             return response()->json($this->response);
         });

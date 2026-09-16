@@ -23,6 +23,7 @@ class ActivityController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'activity_at' => 'required|date',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'status' => 'nullable|in:pending,completed,cancelled',
             ]);
 
@@ -45,6 +46,7 @@ class ActivityController extends Controller
                 'title' => $request->post('title'),
                 'description' => $request->post('description'),
                 'activity_at' => $request->post('activity_at'),
+                'assigned_to' => $request->post('assigned_to'),
                 'status' => $request->post('status', 'pending'),
             ]);
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\Lead;
+use App\Models\Notification;
 use Illuminate\Support\Facades\DB;
 
 
@@ -23,7 +24,9 @@ class LeadController extends Controller
                 'company' => 'nullable|string|max:255',
                 'source' => 'nullable|in:website,referral,social_media,advertisement,other',
                 'status' => 'nullable|in:new,contacted,qualified,lost',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'notes' => 'nullable|string'
+
             ]);
 
             $lead = Lead::create([
@@ -34,8 +37,17 @@ class LeadController extends Controller
                 'source' => $request->post('source'),
                 'status' => $request->post('status', 'new'),
                 'notes' => $request->post('notes'),
+                'assigned_to' => $request->post('assigned_to'),
 
             ]);
+
+            if ($lead->assigned_to) {
+                Notification::create([
+                    'user_id' => $lead->assigned_to,
+                    'title' => 'New Lead Assigned',
+                    'message' => 'You have been assigned a new lead.',
+                ]);
+            }
 
             $this->response['msg'] = 'lead seved successfully';
             $this->response['data'] = $lead;
@@ -55,6 +67,7 @@ class LeadController extends Controller
                 'per_page' => 'nullable|integer|min:1|max:100',
                 'source' => 'nullable|in:website,referral,social_media,advertisement,other',
                 'sort_by' => 'nullable|in:id,name,email,company,status,created_at',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'sort_order' => 'nullable|in:asc,desc',
             ]);
 
@@ -62,7 +75,8 @@ class LeadController extends Controller
             $sortBy = $request->post('sort_by', 'id');
             $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = Lead::orderBy($sortBy, $sortOrder);
+            $query = Lead::with('assignedUser')
+                ->orderBy($sortBy, $sortOrder);
 
             if ($request->post('name') !== null) {
                 $query->where('name', 'like', '%' . $request->post('name') . '%');
@@ -77,6 +91,9 @@ class LeadController extends Controller
             }
             if ($request->post('source') !== null) {
                 $query->where('source', $request->post('source'));
+            }
+            if ($request->post('assigned_to') !== null) {
+                $query->where('assigned_to', $request->post('assigned_to'));
             }
 
             $leads = $query->paginate($perpage);
@@ -120,6 +137,7 @@ class LeadController extends Controller
                 'company' => 'nullable|string|max:255',
                 'source' => 'nullable|in:website,referral,social_media,advertisement,other',
                 'status' => 'nullable|in:new,contacted,qualified,lost',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'notes' => 'nullable|string',
             ]);
 
@@ -136,7 +154,17 @@ class LeadController extends Controller
             $lead->source = $request->post('source');
             $lead->status = $request->post('status', $lead->status);
             $lead->notes = $request->post('notes');
+            $lead->assigned_to = $request->post('assigned_to');
+            $oldAssignedTo = $lead->assigned_to;
             $lead->save();
+
+            if ($lead->assigned_to && $lead->assigned_to != $oldAssignedTo) {
+                Notification::create([
+                    'user_id' => $lead->assigned_to,
+                    'title' => 'Lead Assigned',
+                    'message' => 'A new lead has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'lead updates successfully';
             $this->response['data'] = $lead;
@@ -219,6 +247,66 @@ class LeadController extends Controller
                 'lead' => $lead,
                 'customer' => $customer,
             ];
+        });
+    }
+
+    public function myLeads(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'status' => 'nullable|in:new,contacted,qualified,lost',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->get('per_page', 10);
+
+            $query = Lead::with('assignedUser')
+                ->where('assigned_to', $request->user()->id)
+                ->orderBy('id', 'desc');
+
+            if ($request->post('status') !== null) {
+                $query->where('status', $request->post('status'));
+            }
+
+            $leads = $query->paginate($perPage);
+
+            $this->response['msg'] = 'my assigned leads';
+            $this->response['data'] = $leads;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myLeadsSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my leads summary';
+
+            $this->response['data'] = [
+                'total' => Lead::where('assigned_to', $userId)->count(),
+
+                'new' => Lead::where('assigned_to', $userId)
+                    ->where('status', 'new')
+                    ->count(),
+
+                'contacted' => Lead::where('assigned_to', $userId)
+                    ->where('status', 'contacted')
+                    ->count(),
+
+                'qualified' => Lead::where('assigned_to', $userId)
+                    ->where('status', 'qualified')
+                    ->count(),
+
+                'lost' => Lead::where('assigned_to', $userId)
+                    ->where('status', 'lost')
+                    ->count(),
+            ];
+
+            return response()->json($this->response);
         });
     }
 }

@@ -18,6 +18,7 @@ class FollowUpController extends Controller
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'follow_up_at' => 'required|date',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'status' => 'nullable|in:pending,completed,cancelled',
                 'notes' => 'nullable|string',
             ]);
@@ -40,6 +41,7 @@ class FollowUpController extends Controller
                 'follow_up_at' => $request->post('follow_up_at'),
                 'status' => $request->post('status', 'pending'),
                 'notes' => $request->post('notes'),
+                'assigned_to' => $request->post('assigned_to'),
             ]);
 
             $this->response['msg'] = 'follow-up saved successfully';
@@ -67,7 +69,7 @@ class FollowUpController extends Controller
             $sortBy = $request->post('sort_by', 'id');
             $sortOrder = $request->post('sort_order', 'desc');
 
-            $query = FollowUp::with('lead', 'customer')
+            $query = FollowUp::with('lead', 'customer', 'assignedUser')
                 ->orderBy($sortBy, $sortOrder);
 
             if ($request->post('lead_id') !== null) {
@@ -104,7 +106,7 @@ class FollowUpController extends Controller
                 'id' => 'required|integer'
             ]);
 
-            $followUp = Followup::with('lead', 'customer')
+            $followUp = FollowUp::with('lead', 'customer', 'assignedUser')
                 ->find($request->post('id'));
 
             if (!$followUp) {
@@ -126,6 +128,7 @@ class FollowUpController extends Controller
                 'id' => 'required|integer|exists:follow_ups,id',
                 'follow_up_at' => 'required|data',
                 'status' => 'nullable|in:pending,completed,cancelled',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'notes' => 'nullable|string',
             ]);
 

@@ -10,6 +10,7 @@ class Task extends Model
     protected $fillable = [
         'lead_id',
         'customer_id',
+        'assigned_to',
         'title',
         'description',
         'due_at',
@@ -24,5 +25,10 @@ class Task extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }
