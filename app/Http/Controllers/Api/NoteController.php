@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Note;
 use App\Models\Lead;
 use App\Models\Customer;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 
 class NoteController extends Controller
@@ -19,6 +20,7 @@ class NoteController extends Controller
             $request->validate([
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'note' => 'required|string',
             ]);
 
@@ -38,7 +40,16 @@ class NoteController extends Controller
                 'lead_id' => $request->post('lead_id'),
                 'customer_id' => $request->post('customer_id'),
                 'note' => $request->post('note'),
+                'assigned_to' => $request->post('assigned_to'),
             ]);
+
+            if ($note->assigned_to) {
+                Notification::create([
+                    'user_id' => $note->assigned_to,
+                    'title' => 'New Note Assigned',
+                    'message' => 'A new note has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'note saved successfully';
             $this->response['data'] = $note;
@@ -55,11 +66,12 @@ class NoteController extends Controller
                 'lead_id' => 'nullable|integer|exists:leads,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'per_page' => 'nullable|integer|min:1|max:100',
+                'assigned_to' => 'nullable|integer|exists:users,id',
             ]);
 
             $perPage = $request->get('per_page', 10);
 
-            $query = Note::with('lead', 'customer')
+            $query = Note::with('lead', 'customer', 'assignedUser')
                 ->orderBy('id', 'desc');
 
             if ($request->post('lead_id') !== null) {
@@ -68,6 +80,9 @@ class NoteController extends Controller
 
             if ($request->post('customer_id') !== null) {
                 $query->where('customer_id', $request->post('customer_id'));
+            }
+            if ($request->post('assigned_to')) {
+                $query->where('assigned_to', $request->post('assigned_to'));
             }
 
             $notes = $query->paginate($perPage);
@@ -87,7 +102,7 @@ class NoteController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $note = Note::with('lead', 'customer')
+            $note = Note::with('lead', 'customer', 'assignedUser')
                 ->find($request->post('id'));
 
             if (!$note) {
@@ -108,6 +123,7 @@ class NoteController extends Controller
             $request->validate([
                 'id' => 'required|integer|exists:notes,id',
                 'note' => 'required|string',
+                'assigned_to' => 'nullable|integer|exists:users,id',
             ]);
 
             $note = Note::find($request->post('id'));
@@ -115,9 +131,18 @@ class NoteController extends Controller
             if (!$note) {
                 throw new ExceptionApiStatusZeroException('note not found');
             }
-
+            $oldAssignedTo = $note->assigned_to;
             $note->note = $request->post('note');
+            $note->assigned_to = $request->post('assigned_to');
             $note->save();
+
+            if ($note->assigned_to && $note->assigned_to != $oldAssignedTo) {
+                Notification::create([
+                    'user_id' => $note->assigned_to,
+                    'title' => 'Note Assigned',
+                    'message' => 'A new note has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'note updated successfully';
             $this->response['data'] = $note;

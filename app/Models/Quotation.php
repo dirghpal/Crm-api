@@ -4,17 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Note extends Model
+class Quotation extends Model
 {
 
     protected $fillable = [
+        'deal_id',
         'lead_id',
-        'company',
         'customer_id',
         'assigned_to',
-        'note',
+        'quotation_number',
+        'title',
+        'amount',
+        'tax_amount',
+        'discount_amount',
+        'total_amount',
+        'valid_until',
+        'status',
+        'notes',
     ];
 
+    public function deal()
+    {
+        return $this->belongsTo(Deal::class);
+    }
 
     public function lead()
     {
@@ -29,5 +41,10 @@ class Note extends Model
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(QuotationStatusHistory::class);
     }
 }

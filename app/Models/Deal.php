@@ -4,17 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Note extends Model
+class Deal extends Model
 {
 
     protected $fillable = [
         'lead_id',
-        'company',
         'customer_id',
         'assigned_to',
-        'note',
+        'title',
+        'amount',
+        'stage',
+        'probability',
+        'expected_close_at',
+        'status',
+        'notes',
     ];
-
 
     public function lead()
     {

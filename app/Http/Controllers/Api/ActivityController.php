@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\Lead;
 use App\Models\Customer;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 
 class ActivityController extends Controller
@@ -50,6 +51,14 @@ class ActivityController extends Controller
                 'status' => $request->post('status', 'pending'),
             ]);
 
+            if ($activity->assigned_to) {
+                Notification::create([
+                    'user_id' => $activity->assigned_to,
+                    'title' => 'New Activity Assigned',
+                    'message' => 'A new activity has been assigned to you.',
+                ]);
+            }
+
             $this->response['msg'] = 'activity saved successfully';
             $this->response['data'] = $activity;
 
@@ -73,7 +82,7 @@ class ActivityController extends Controller
 
             $perPage = $request->get('per_page', 10);
 
-            $query = Activity::with('lead', 'customer')
+            $query = Activity::with('lead', 'customer', 'assignedUser')
                 ->orderBy('id', 'desc');
 
             if ($request->post('lead_id') !== null) {
@@ -109,7 +118,7 @@ class ActivityController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $activity = Activity::with('lead', 'customer')
+            $activity = Activity::with('lead', 'customer', 'assignedUser')
                 ->find($request->post('id'));
 
             if (!$activity) {
@@ -134,6 +143,7 @@ class ActivityController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'activity_at' => 'required|date',
+                'assigned_to' => 'nullable|integer|exists:users,id',
                 'status' => 'nullable|in:pending,completed,cancelled',
             ]);
 
@@ -147,12 +157,22 @@ class ActivityController extends Controller
             $activity->title = $request->post('titel');
             $activity->description = $request->post('description');
             $activity->activity_at = $request->post('activity_id');
+            $activity->assigned_to = $request->post('assigned_to');
+            $oldAssignedTo = $activity->assigned_to;
+
 
             if ($request->post('status') !== null) {
                 $activity->status = $request->post('status');
             }
 
             $activity->save();
+            
+            if ($activity->assigned_to && $activity->assigned_to != $oldAssignedTo) {
+                Notification::create([
+                'user_id' => $activity->assigned_to, 
+                'title' => 'Activity Assigned', 
+                'message' => 'A new activity has been assigned to you.',]);
+            }
 
             $this->response['msg'] = 'activity updated successfully';
             $this->response['data'] = $activity;

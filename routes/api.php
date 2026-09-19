@@ -4,12 +4,19 @@ use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DealController;
+use App\Http\Controllers\Api\DealStageHistoryController;
 use App\Http\Controllers\Api\FollowUpController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\InvoiceStatusHistoryController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\QuotationStatusHistoryController;
 use App\Http\Controllers\Api\TaskController;
 use App\Models\Customer;
+use App\Models\Deal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -80,10 +87,46 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('notification/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
     Route::post('notification/unread-count', [NotificationController::class, 'unreadCount']);
 
+    //Deals
+    Route::post('deal/save' , [DealController::class, 'save']);
+    Route::post('deal/list' , [DealController::class, 'list']);
+    Route::post('deal/detail' , [DealController::class, 'detail']);
+    Route::post('deal/update' , [DealController::class, 'update']);
+    Route::post('deal/delete' , [DealController::class, 'delete']);
+    Route::post('deal/my-deals', [DealController::class, 'myDeals']);
+    Route::post('deal/my-deals-summary', [DealController::class, 'myDealsSummary']);
+    Route::post('deal/pipeline-summary', [DealController::class, 'pipelineSummary']);
+
+    //dealstagehistory
+    Route::post('deal-stage-history/list' , [DealStageHistoryController::class , 'list']);
+    Route::post('deal-stage-history/detail' , [DealStageHistoryController::class , 'detail']);
+
+    //Quotation
+    Route::post('Quotation/save' , [QuotationController::class, 'save']);
+    Route::post('Quotation/list' , [QuotationController::class, 'list']);
+    Route::post('Quotation/detail' , [QuotationController::class, 'detail']);
+    Route::post('Quotation/update' , [QuotationController::class, 'update']);
+    Route::post('Quotation/delete' , [QuotationController::class, 'delete']);
+    
+    //Quotation Status History
+    Route::post('quotation-status-history/list' , [QuotationStatusHistoryController::class, 'list']);
+    Route::post('quotation-status-history/detail' , [QuotationStatusHistoryController::class, 'detail']);
+    Route::post('quotation-status-history/update' , [QuotationStatusHistoryController::class, 'update' ]);
+
+    //invoice
+    Route::post('invoice/save' , [InvoiceController::class, 'save']);
+    Route::post('invoice/list' , [InvoiceController::class, 'list']);
+    Route::post('invoice/detail' , [InvoiceController::class, 'detail']);
+    Route::post('invoice/update' , [InvoiceController::class, 'update']);
+    Route::post('invoice/delete' , [InvoiceController::class, 'delete']);
+
+    //Invoice Status History
+    Route::post('invoicestatushistory/list' , [InvoiceStatusHistoryController::class, 'list']);
+    Route::post('invoicestatushistory/detail', [InvoiceStatusHistoryController::class, 'detail']);
+
     //Dashboard
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
 });
-
 
 Route::get('/user', function (Request $request) {
     return $request->user();
