@@ -113,7 +113,19 @@ class LeadController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $lead = Lead::with('customer')->find($request->post('id'));
+            $lead =
+                Lead::with(
+                    'customer',
+                    'deals',
+                    'followUps',
+                    'activities',
+                    'notes',
+                    'quotations',
+                    'invoices'
+
+                )->find(
+                    $request->post('id')
+                );
 
             if (!$lead) {
                 throw new ApiStatusZeroException('lead not found');

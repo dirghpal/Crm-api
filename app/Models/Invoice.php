@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+
 
 class Invoice extends Model
 {
@@ -51,5 +54,10 @@ class Invoice extends Model
     public function statusHistories()
     {
         return $this->hasMany(InvoiceStatusHistory::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(InvoicePayment::class);
     }
 }

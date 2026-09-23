@@ -132,7 +132,6 @@ class ActivityController extends Controller
         });
     }
 
-
     public function update(Request $request)
     {
         return handleApiRequest(function () use ($request) {

@@ -8,12 +8,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Deal;
+use App\Models\Task;
+use App\Models\FollowUp;
+use App\Models\Quotation;
+use App\Models\Invoice;
+
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -47,5 +52,30 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function deals()
+    {
+        return $this->hasMany(Deal::class, 'assigned_to');
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    public function followUps()
+    {
+        return $this->hasMany(FollowUp::class, 'assigned_to');
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class, 'assigned_to');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'assigned_to');
     }
 }

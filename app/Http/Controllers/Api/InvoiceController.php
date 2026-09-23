@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Exception\ApiStatusZeroException;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Models\InvoicePayment;
 use App\Models\InvoiceStatusHistory;
 use App\Models\Notification;
 use Illuminate\Http\Request;
-
 
 class InvoiceController extends Controller
 {
@@ -116,7 +116,9 @@ class InvoiceController extends Controller
                 'deal',
                 'lead',
                 'customer',
-                'assignedUser'
+                'assignedUser',
+                'statusHistories',
+                'payments'
             );
 
             if ($request->post('quotation_id')) {
@@ -178,12 +180,27 @@ class InvoiceController extends Controller
                 'deal',
                 'lead',
                 'customer',
-                'assignedUser'
+                'assignedUser',
+                'statusHistories',
+                'payments'
             )->find($request->post('id'));
 
             if (!$invoice) {
                 throw new ApiStatusZeroException('invoice not found');
             }
+
+
+            $paidAmount = InvoicePayment::where('invoice_id', $invoice->id)
+                ->where('status', 'completed')
+                ->sum('amount');
+
+            $remainingAmount = $invoice->total_amount - $paidAmount;
+
+            $this->response['data'] = [
+                'invoice' => $invoice,
+                'paid_amount' => $paidAmount,
+                'remaining_amount' => $remainingAmount,
+            ];
 
             $this->response['msg'] = 'invoice detail';
             $this->response['data'] = $invoice;
@@ -238,6 +255,7 @@ class InvoiceController extends Controller
 
             $totalAmount = $amount + $taxAmount - $discountAmount;
 
+            $oldStatus = $invoice->status;
             if ($totalAmount < 0) {
                 throw new ApiStatusZeroException(
                     'discount amount cannot be greater than total amount'
@@ -259,6 +277,14 @@ class InvoiceController extends Controller
             $invoice->notes = $request->post('notes');
 
             $invoice->save();
+
+            if ($invoice->status != $oldStatus) {
+                InvoiceStatusHistory::create([
+                    'invoice_id' => $invoice->id,
+                    'status' => $invoice->status,
+                    'comment' => 'Invoice status updated',
+                ]);
+            }
 
             if ($invoice->assigned_to && $invoice->assigned_to != $oldAssignedTo) {
                 Notification::create([
@@ -292,6 +318,138 @@ class InvoiceController extends Controller
             $invoice->delete();
 
             $this->response['msg'] = 'invoice deleted successfully';
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myInvoices(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'status' => 'nullable|in:draft,sent,paid,overdue,cancelled',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->post('per_page', 10);
+
+            $query = Invoice::with(
+                'quotation',
+                'deal',
+                'lead',
+                'customer',
+                'assignedUser'
+            )->where('assigned_to', $request->user()->id);
+
+            if ($request->post('status')) {
+                $query->where('status', $request->post('status'));
+            }
+
+            $invoices = $query
+                ->orderBy('id', 'desc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'my invoices';
+            $this->response['data'] = $invoices;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myInvoicesSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my invoices summary';
+
+            $this->response['data'] = [
+                'total_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->count(),
+
+                'draft_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'draft')->count(),
+
+                'sent_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'sent')->count(),
+
+                'paid_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'paid')->count(),
+
+                'overdue_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'overdue')->count(),
+
+                'cancelled_invoices' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'cancelled')->count(),
+
+                'total_amount' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->sum('total_amount'),
+
+                'paid_amount' => Invoice::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'paid')->sum('total_amount'),
+            ];
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function markOverdue(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $invoices = Invoice::where('due_date', '<', now()->toDateString())
+                ->whereNotIn('status', [
+                    'paid',
+                    'cancelled',
+                    'overdue',
+                ])
+                ->get();
+
+            $count = 0;
+
+            foreach ($invoices as $invoice) {
+                $invoice->status = 'overdue';
+                $invoice->save();
+
+                if ($invoice->assigned_to) {
+                    Notification::create([
+                        'user_id' => $invoice->assigned_to,
+                        'title' => 'Invoice Overdue',
+                        'message' => 'An invoice assigned to you is now overdue.',
+                    ]);
+                }
+
+                InvoiceStatusHistory::create([
+                    'invoice_id' => $invoice->id,
+                    'status' => 'overdue',
+                    'comment' => 'Invoice marked as overdue',
+                ]);
+
+                $count++;
+            }
+
+            $this->response['msg'] = 'overdue invoices updated successfully';
+            $this->response['data'] = [
+                'updated_count' => $count,
+            ];
 
             return response()->json($this->response);
         });

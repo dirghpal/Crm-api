@@ -6,6 +6,8 @@ use App\Exception\ApiStatusZeroException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Notification;
+use App\Models\Invoice;
+use App\Models\InvoiceStatusHistory;
 use App\Models\Quotation;
 use App\Models\QuotationStatusHistory;
 
@@ -275,6 +277,111 @@ class QuotationController extends Controller
             $quotation->delete();
 
             $this->response['msg'] = 'quotation deleted successfully';
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myQuotations(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'status' => 'nullable|in:draft,sent,accepted,rejected,expired',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->post('per_page', 10);
+
+            $query = Quotation::with(
+                'deal',
+                'lead',
+                'customer',
+                'assignedUser'
+            )->where('assigned_to', $request->user()->id);
+
+            if ($request->post('status')) {
+                $query->where('status', $request->post('status'));
+            }
+
+            $quotations = $query
+                ->orderBy('id', 'desc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'my quotations';
+            $this->response['data'] = $quotations;
+
+            return response()->json($this->response);
+        });
+    }
+
+
+    public function convertToInvoice(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'id' => 'required|integer|exists:quotations,id',
+                'invoice_date' => 'required|date',
+                'due_date' => 'nullable|date',
+            ]);
+
+            $quotation = Quotation::find($request->post('id'));
+
+            if (!$quotation) {
+                throw new ApiStatusZeroException('quotation not found');
+            }
+
+            if ($quotation->status !== 'accepted') {
+                throw new ApiStatusZeroException(
+                    'only accepted quotation can be converted to invoice'
+                );
+            }
+
+            if ($quotation->invoices()->exists()) {
+                throw new ApiStatusZeroException(
+                    'invoice already created for this quotation'
+                );
+            }
+
+            $invoiceNumber = 'INV-' . date('YmdHis') . '-' . rand(100, 999);
+
+            $invoice = Invoice::create([
+                'quotation_id' => $quotation->id,
+                'deal_id' => $quotation->deal_id,
+                'lead_id' => $quotation->lead_id,
+                'customer_id' => $quotation->customer_id,
+                'assigned_to' => $quotation->assigned_to,
+                'invoice_number' => $invoiceNumber,
+                'invoice_date' => $request->post('invoice_date'),
+                'due_date' => $request->post('due_date'),
+                'amount' => $quotation->amount,
+                'tax_amount' => $quotation->tax_amount,
+                'discount_amount' => $quotation->discount_amount,
+                'total_amount' => $quotation->total_amount,
+                'status' => 'draft',
+                'notes' => $quotation->notes,
+            ]);
+
+            InvoiceStatusHistory::create([
+                'invoice_id' => $invoice->id,
+                'status' => $invoice->status,
+                'comment' => 'Invoice created from quotation',
+            ]);
+
+            if ($invoice->assigned_to) {
+                Notification::create([
+                    'user_id' => $invoice->assigned_to,
+                    'title' => 'Invoice Created',
+                    'message' => 'A new invoice has been created from your quotation.',
+                ]);
+            }
+
+            $this->response['msg'] = 'quotation converted to invoice successfully';
+            $this->response['data'] = [
+                'quotation' => $quotation,
+                'invoice' => $invoice,
+            ];
 
             return response()->json($this->response);
         });

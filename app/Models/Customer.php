@@ -23,4 +23,34 @@ class Customer extends Model
     {
         return $this->hasMany(Lead::class);
     }
+
+    public function deals()
+    {
+        return $this->hasMany(Deal::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
+    public function followUps()
+    {
+        return $this->hasMany(FollowUp::class);
+    }
+
+    public function activities()
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
 }

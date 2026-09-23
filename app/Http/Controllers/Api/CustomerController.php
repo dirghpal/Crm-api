@@ -129,8 +129,19 @@ class CustomerController extends Controller
                 'id' => 'required|integer',
             ]);
 
-            $customer = Customer::with('leads')
-                ->find($request->post('id'));
+            $customer = Customer::with(
+                'leads',
+                'deals',
+                'invoices',
+                'quotations',
+                'followUps',
+                'activities',
+                'notes',
+                'contacts',
+
+            )->find(
+                $request->post('id')
+            );
 
             if (!$customer) {
                 throw new ApiStatusZeroException('Customer not found');
