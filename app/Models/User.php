@@ -78,4 +78,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(Invoice::class, 'assigned_to');
     }
+
+    public function activities()
+    {
+        return $this->hasMany(Activity::class, 'assigned_to');
+    }
+    
+    public function notes()
+    {
+        return $this->hasMany(Note::class, 'assigned_to');
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
 }

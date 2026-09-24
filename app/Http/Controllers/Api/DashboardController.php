@@ -435,5 +435,119 @@ class DashboardController extends Controller
         });
     }
 
+    public function leadSourceSummary(Request $request)
+    {
+        return handleApiRequest(function () {
 
+            $sources = Lead::select('source')
+                ->selectRaw('COUNT(*) as total_leads')
+                ->selectRaw(
+                    'SUM(CASE WHEN is_converted = 1 THEN 1 ELSE 0 END) as converted_leads'
+                )
+                ->whereNotNull('source')
+                ->groupBy('source')
+                ->orderBy('total_leads', 'desc')
+                ->get();
+
+            $this->response['msg'] = 'lead source summary';
+            $this->response['data'] = $sources;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function monthlyRevenue(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $data = [];
+
+            for ($i = 11; $i >= 0; $i--) {
+
+                $startDate = now()
+                    ->subMonths($i)
+                    ->startOfMonth();
+
+                $endDate = now()
+                    ->subMonths($i)
+                    ->endOfMonth();
+
+                $amount = InvoicePayment::where('status', 'completed')
+                    ->whereBetween('payment_date', [
+                        $startDate,
+                        $endDate,
+                    ])
+                    ->sum('amount');
+
+                $data[] = [
+                    'month' => $startDate->format('Y-m'),
+                    'revenue' => $amount,
+                ];
+            }
+
+            $this->response['msg'] = 'monthly revenue';
+            $this->response['data'] = $data;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function activitiesByUser(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $users = User::whereHas('activities')
+                ->withCount('activities')
+                ->get();
+
+            $data = [];
+
+            foreach ($users as $user) {
+                $data[] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'total_activities' => $user->activities()->count(),
+                    'pending_activities' => $user->activities()
+                        ->where('status', 'pending')
+                        ->count(),
+                    'completed_activities' => $user->activities()
+                        ->where('status', 'completed')
+                        ->count(),
+                    'cancelled_activities' => $user->activities()
+                        ->where('status', 'cancelled')
+                        ->count(),
+                ];
+            }
+
+            $this->response['msg'] = 'activities by user';
+            $this->response['data'] = $data;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function notesByUser(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $users = User::whereHas('notes')
+                ->withCount('notes')
+                ->get();
+
+            $data = [];
+
+            foreach ($users as $user) {
+                $data[] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'total_notes' => $user->notes()->count(),
+                ];
+            }
+
+            $this->response['msg'] = 'notes by user';
+            $this->response['data'] = $data;
+
+            return response()->json($this->response);
+        });
+    }
 }

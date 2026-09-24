@@ -34,6 +34,15 @@ class CustomerContactController extends Controller
                 'status' => $request->post('status', 1),
             ]);
 
+            if ($request->post('is_primary', 0) == 1) {
+                CustomerContact::where(
+                    'customer_id',
+                    $request->post('customer_id')
+                )->update([
+                    'is_primary' => 0,
+                ]);
+            }
+
             $this->response['msg'] = 'customer contact saved successfully';
             $this->response['data'] = $contact;
 

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\QuotationStatusHistoryController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\TaskController;
 use App\Models\Customer;
 use App\Models\Deal;
@@ -59,13 +60,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('follow-up/detail', [FollowUpController::class, 'detail']);
     Route::post('follow-up/update', [FollowUpController::class, 'update']);
     Route::post('follow-up/delete', [FollowUpController::class, 'delete']);
+    Route::post('follow-up/my-follow-ups', [FollowUpController::class, 'myFollowUps']);
+    Route::post('follow-up/upcoming', [FollowUpController::class, 'upcoming']);
 
-    //activity
+    //activity 
     Route::post('activity/save', [ActivityController::class, 'save']);
     Route::post('activity/list', [ActivityController::class, 'list']);
     Route::post('activity/detail', [ActivityController::class, 'detail']);
     Route::post('activity/update', [ActivityController::class, 'update']);
     Route::post('activity/delete', [ActivityController::class, 'delete']);
+    Route::post('activity/my-activities', [ActivityController::class, 'myActivities']);
+    Route::post('activity/my-activities-summary', [ActivityController::class, 'myActivitiesSummary']);
 
     //notes
     Route::post('note/save', [NoteController::class, 'save']);
@@ -73,6 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('note/detail', [NoteController::class, 'detail']);
     Route::post('note/update', [NoteController::class, 'update']);
     Route::post('note/delete', [NoteController::class, 'delete']);
+    Route::post('note/my-notes', [NoteController::class, 'myNotes']);
+    Route::post('note/my-notes-summary', [NoteController::class, 'myNotesSummary']);
 
     //task
     Route::post('task/save', [TaskController::class, 'save']);
@@ -89,6 +96,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('notification/mark-as-read', [NotificationController::class, 'markAsRead']);
     Route::post('notification/mark-all-as-read', [NotificationController::class, 'markAllAsRead']);
     Route::post('notification/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('notification/my-notifications', [NotificationController::class, 'myNotifications']);
+    Route::post('notification/my-unread-count', [NotificationController::class, 'myNotificationsUnreadCount']);
+    Route::post('notification/my-mark-all-as-read', [NotificationController::class, 'myMarkAllAsRead']);
+
 
     //Deals
     Route::post('deal/save', [DealController::class, 'save']);
@@ -111,7 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('Quotation/update', [QuotationController::class, 'update']);
     Route::post('Quotation/delete', [QuotationController::class, 'delete']);
     Route::post('Quotation/my-quotations', [QuotationController::class, 'myQuotations']);
-    Route::post('Quotation/convert-to-invoice', [QuotationController::class, 'convertToInvoice'] );
+    Route::post('Quotation/convert-to-invoice', [QuotationController::class, 'convertToInvoice']);
 
     //Quotation Status History
     Route::post('quotation-status-history/list', [QuotationStatusHistoryController::class, 'list']);
@@ -123,11 +134,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('invoice/list', [InvoiceController::class, 'list']);
     Route::post('invoice/detail', [InvoiceController::class, 'detail']);
     Route::post('invoice/update', [InvoiceController::class, 'update']);
-    Route::post('invoice/delete', [InvoiceController::class, 'delete']); 
+    Route::post('invoice/delete', [InvoiceController::class, 'delete']);
     Route::post('invoice/my-invoice', [InvoiceController::class, 'myInvoices']);
     Route::post('invoice/my-invoices-summary', [InvoiceController::class, 'myInvoicesSummary']);
     Route::post('invoice/mark-overdue', [InvoiceController::class, 'markOverdue']);
- 
+
     //Invoice Status History
     Route::post('invoicestatushistory/list', [InvoiceStatusHistoryController::class, 'list']);
     Route::post('invoicestatushistory/detail', [InvoiceStatusHistoryController::class, 'detail']);
@@ -141,13 +152,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('invoicepayment/summary', [InvoicePaymentController::class, 'summary']);
 
     //Customer_Contact
-    Route::post('customer_contact/save' , [CustomerContactController::class, 'save']);
-    Route::post('customer_contact/list' , [CustomerContactController::class, 'list']);
-    Route::post('customer_contact/detail ' , [CustomerContactController::class, 'detail']);
-    Route::post('customer_contact/update' , [CustomerContactController::class, 'update']);
-    Route::post('customer_contact/delete' ,[CustomerContactController::class, 'delete']);
-    Route::post('customer_contact/setprimary' , [CustomerContactController::class, 'setprimary']);
-    
+    Route::post('customer_contact/save', [CustomerContactController::class, 'save']);
+    Route::post('customer_contact/list', [CustomerContactController::class, 'list']);
+    Route::post('customer_contact/detail ', [CustomerContactController::class, 'detail']);
+    Route::post('customer_contact/update', [CustomerContactController::class, 'update']);
+    Route::post('customer_contact/delete', [CustomerContactController::class, 'delete']);
+    Route::post('customer_contact/setprimary', [CustomerContactController::class, 'setprimary']);
+
+    //search
+    Route::post(
+        'search',
+        [SearchController::class, 'search']
+
+    );
+
 
     //Dashboard
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
@@ -157,9 +175,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('dashboard/follow-ups-by-user', [DashboardController::class, 'followUpsByUser']);
     Route::post('dashboard/quotations-by-user', [DashboardController::class, 'quotationsByUser']);
     Route::post('dashboard/invoices-by-user', [DashboardController::class, 'invoicesByUser']);
-    Route::post('dashboard/deal-forecast' , [DashboardController::class, 'dealForecast']);
+    Route::post('dashboard/deal-forecast', [DashboardController::class, 'dealForecast']);
     Route::post('dashboard/deal-forecast-by-user', [DashboardController::class, 'dealForecastByUser']);
-
+    Route::post('dashboard/lead-source-summary', [DashboardController::class, 'leadSourceSummary']);
+    Route::post('dashboard/monthly-revenue', [DashboardController::class, 'monthlyRevenue']);
+    Route::post('dashboard/activities-by-user', [DashboardController::class, 'activitiesByUser']);
+    Route::post('dashboard/notes-by-user', [DashboardController::class, 'notesByUser']);
 });
 
 Route::get('/user', function (Request $request) {

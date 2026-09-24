@@ -176,4 +176,95 @@ class FollowUpController extends Controller
             return response()->json($this->response);
         });
     }
+
+    public function myFollowUps(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'status' => 'nullable|in:pending,completed,cancelled',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->post('per_page', 10);
+
+            $query = FollowUp::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )->where('assigned_to', $request->user()->id);
+
+            if ($request->post('status')) {
+                $query->where('status', $request->post('status'));
+            }
+
+            $followUps = $query
+                ->orderBy('follow_up_at', 'asc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'my follow-ups';
+            $this->response['data'] = $followUps;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function upcoming(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'days' => 'nullable|integer|min:1|max:30',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $days = $request->post('days', 7);
+            $perPage = $request->post('per_page', 10);
+
+            $followUps = FollowUp::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )
+                ->where('status', 'pending')
+                ->whereBetween('follow_up_at', [
+                    now(),
+                    now()->addDays($days),
+                ])
+                ->orderBy('follow_up_at', 'asc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'upcoming follow-ups';
+            $this->response['data'] = $followUps;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function overdue(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->post('per_page', 10);
+
+            $followUps = FollowUp::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )
+                ->where('status', 'pending')
+                ->where('follow_up_at', '<', now())
+                ->orderBy('follow_up_at', 'asc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'overdue follow-ups';
+            $this->response['data'] = $followUps;
+
+            return response()->json($this->response);
+        });
+    }
 }

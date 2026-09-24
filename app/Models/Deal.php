@@ -34,4 +34,14 @@ class Deal extends Model
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
+
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class);
+    }
+    
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }

@@ -132,7 +132,10 @@ class DealController extends Controller
                 'lead',
                 'customer',
                 'assignedUser',
-                'stageHistories'
+                'stageHistories',
+                'quotations',
+                'invoices',
+                
             )->find($request->post('id'));
 
             if (!$deal) {

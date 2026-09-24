@@ -173,4 +173,46 @@ class NoteController extends Controller
             return response()->json($this->response);
         });
     }
+
+    public function myNotes(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $perPage = $request->post('per_page', 10);
+
+            $query = Note::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )->where('assigned_to', $request->user()->id);
+
+            $notes = $query
+                ->orderBy('id', 'desc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'my notes';
+            $this->response['data'] = $notes;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myNotesSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request){
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my notes summary';
+
+            $this->response['data'] = [
+                'total_notes' => Note::where(
+                    'assigned_to',
+                    $userId
+                )->count(),
+            ];
+
+            return response()->json($this->response);
+        });
+    }
 }

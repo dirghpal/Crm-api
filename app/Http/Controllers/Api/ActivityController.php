@@ -66,8 +66,6 @@ class ActivityController extends Controller
         });
     }
 
-
-
     public function list(Request $request)
     {
         return handleApiRequest(function () use ($request) {
@@ -78,12 +76,20 @@ class ActivityController extends Controller
                 'type' => 'nullable|in:call,meeting,email,note',
                 'status' => 'nullable|in:pending,completed,cancelled',
                 'per_page' => 'nullable|integer|min:1|max:100',
+                'assigned_to' => 'nullable|integer|exists:users,id',
             ]);
 
             $perPage = $request->get('per_page', 10);
 
             $query = Activity::with('lead', 'customer', 'assignedUser')
                 ->orderBy('id', 'desc');
+
+            if ($request->post('assigned_to')) {
+                $query->where(
+                    'assigned_to',
+                    $request->post('assigned_to')
+                );
+            }
 
             if ($request->post('lead_id') !== null) {
                 $query->where('lead_id', $request->post('lead_id'));
@@ -165,12 +171,13 @@ class ActivityController extends Controller
             }
 
             $activity->save();
-            
+
             if ($activity->assigned_to && $activity->assigned_to != $oldAssignedTo) {
                 Notification::create([
-                'user_id' => $activity->assigned_to, 
-                'title' => 'Activity Assigned', 
-                'message' => 'A new activity has been assigned to you.',]);
+                    'user_id' => $activity->assigned_to,
+                    'title' => 'Activity Assigned',
+                    'message' => 'A new activity has been assigned to you.',
+                ]);
             }
 
             $this->response['msg'] = 'activity updated successfully';
@@ -202,4 +209,77 @@ class ActivityController extends Controller
             return response()->json($this->response);
         });
     }
+
+    public function myActivities(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $request->validate([
+                'type' => 'nullable|in:call,meeting,email,note',
+                'status' => 'nullable|in:pending,completed,cancelled',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $perPage = $request->post('per_page', 10);
+
+            $query = Activity::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )->where('assigned_to', $request->user()->id);
+
+            if ($request->post('type')) {
+                $query->where('type', $request->post('type'));
+            }
+
+            if ($request->post('status')) {
+                $query->where('status', $request->post('status'));
+            }
+
+            $activities = $query
+                ->orderBy('activity_at', 'desc')
+                ->paginate($perPage);
+
+            $this->response['msg'] = 'my activities';
+            $this->response['data'] = $activities;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myActivitiesSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request){
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my activities summary';
+
+            $this->response['data'] = [
+                'total_activities' => Activity::where(
+                    'assigned_to',
+                    $userId
+                )->count(),
+
+                'pending_activities' => Activity::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'pending')->count(),
+
+                'completed_activities' => Activity::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'completed')->count(),
+
+                'cancelled_activities' => Activity::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'cancelled')->count(),
+            ];
+
+            return response()->json($this->response);
+        });
+    }
+
+    
 }
