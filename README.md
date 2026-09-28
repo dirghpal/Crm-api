@@ -1,20 +1,15 @@
+<p align="center">
+  <img src="crm-api-banner.png" alt="CRM API Banner" width="100%">
+</p>
+
+
 # CRM API
 
 Laravel 11 based Customer Relationship Management (CRM) backend API.
 
 This project provides REST APIs for authentication, leads, customers, follow-ups, activities, notes, tasks, deals, quotations, invoices, payments, notifications, dashboard reporting, and global search.
 
-<<<<<<< HEAD
-## Tech Stack
-
-
-
-
 =======
-## 📸 Project Preview
-
-![crm-api](./banner.png)
-
 ## Tech Stack
 
 >>>>>>> 8575389fc6325b3d27cc0f6aee24e75def8cd355
