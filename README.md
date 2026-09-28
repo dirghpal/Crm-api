@@ -4,11 +4,20 @@ Laravel 11 based Customer Relationship Management (CRM) backend API.
 
 This project provides REST APIs for authentication, leads, customers, follow-ups, activities, notes, tasks, deals, quotations, invoices, payments, notifications, dashboard reporting, and global search.
 
+<<<<<<< HEAD
 ## Tech Stack
 
 
 
 
+=======
+## 📸 Project Preview
+
+![crm-api](./banner.png)
+
+## Tech Stack
+
+>>>>>>> 8575389fc6325b3d27cc0f6aee24e75def8cd355
 - **PHP:** 8.2+
 - **Framework:** Laravel 11
 - **Authentication:** Laravel Sanctum
