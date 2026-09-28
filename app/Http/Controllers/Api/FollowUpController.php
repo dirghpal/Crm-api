@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exception\ApiStatusZeroException;
 use App\Http\Controllers\Controller;
 use App\Models\Followup;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 
 class FollowUpController extends Controller
@@ -43,6 +44,14 @@ class FollowUpController extends Controller
                 'notes' => $request->post('notes'),
                 'assigned_to' => $request->post('assigned_to'),
             ]);
+
+            if ($followUp->assigned_to) {
+                Notification::create([
+                    'user_id' => $followUp->assigned_to,
+                    'title' => 'New Follow-Up Assigned',
+                    'message' => 'A new follow-up has been assigned to you.',
+                ]);
+            }
 
             $this->response['msg'] = 'follow-up saved successfully';
             $this->response['data'] = $followUp;
@@ -106,8 +115,13 @@ class FollowUpController extends Controller
                 'id' => 'required|integer'
             ]);
 
-            $followUp = FollowUp::with('lead', 'customer', 'assignedUser')
-                ->find($request->post('id'));
+            $followUp = FollowUp::with(
+                'lead',
+                'customer',
+                'assignedUser'
+            )->find(
+                $request->post('id')
+            );
 
             if (!$followUp) {
                 throw new ApiStatusZeroException('follow-up not found');
@@ -263,6 +277,48 @@ class FollowUpController extends Controller
 
             $this->response['msg'] = 'overdue follow-ups';
             $this->response['data'] = $followUps;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function myFollowUpsSummary(Request $request)
+    {
+        return handleApiRequest(function () use ($request) {
+
+            $userId = $request->user()->id;
+
+            $this->response['msg'] = 'my follow-ups summary';
+
+            $this->response['data'] = [
+                'total_follow_ups' => FollowUp::where(
+                    'assigned_to',
+                    $userId
+                )->count(),
+
+                'pending_follow_ups' => FollowUp::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'pending')->count(),
+
+                'completed_follow_ups' => FollowUp::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'completed')->count(),
+
+                'cancelled_follow_ups' => FollowUp::where(
+                    'assigned_to',
+                    $userId
+                )->where('status', 'cancelled')->count(),
+
+                'overdue_follow_ups' => FollowUp::where(
+                    'assigned_to',
+                    $userId
+                )
+                    ->where('status', 'pending')
+                    ->where('follow_up_at', '<', now())
+                    ->count(),
+            ];
 
             return response()->json($this->response);
         });

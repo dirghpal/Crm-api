@@ -550,4 +550,239 @@ class DashboardController extends Controller
             return response()->json($this->response);
         });
     }
+
+    public function leadsByUser(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $users = User::whereHas('leads')
+                ->withCount('leads')
+                ->get();
+
+            $data = [];
+
+            foreach ($users as $user) {
+                $data[] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+
+                    'total_leads' => $user->leads()->count(),
+
+                    'new_leads' => $user->leads()
+                        ->where('status', 'new')
+                        ->count(),
+
+                    'contacted_leads' => $user->leads()
+                        ->where('status', 'contacted')
+                        ->count(),
+
+                    'qualified_leads' => $user->leads()
+                        ->where('status', 'qualified')
+                        ->count(),
+
+                    'converted_leads' => $user->leads()
+                        ->where('is_converted', 1)
+                        ->count(),
+
+                    'lost_leads' => $user->leads()
+                        ->where('status', 'lost')
+                        ->count(),
+                ];
+            }
+
+            $this->response['msg'] = 'leads by user';
+            $this->response['data'] = $data;
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function quotationConversionRate(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $totalQuotations = Quotation::count();
+
+            $acceptedQuotations = Quotation::where(
+                'status',
+                'accepted'
+            )->count();
+
+            $acceptanceRate = $totalQuotations > 0
+                ? round(
+                    ($acceptedQuotations / $totalQuotations) * 100,
+                    2
+                )
+                : 0;
+
+            $this->response['msg'] = 'quotation conversion rate';
+            $this->response['data'] = [
+                'total_quotations' => $totalQuotations,
+                'accepted_quotations' => $acceptedQuotations,
+                'acceptance_rate' => $acceptanceRate,
+            ];
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function quotationInvoiceSummary(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $acceptedQuotations = Quotation::where(
+                'status',
+                'accepted'
+            )->count();
+
+            $convertedQuotations = Quotation::where(
+                'status',
+                'accepted'
+            )
+                ->whereHas('invoices')
+                ->count();
+
+            $conversionRate = $acceptedQuotations > 0
+                ? round(
+                    ($convertedQuotations / $acceptedQuotations) * 100,
+                    2
+                )
+                : 0;
+
+            $this->response['msg'] = 'quotation invoice summary';
+            $this->response['data'] = [
+                'accepted_quotations' => $acceptedQuotations,
+                'converted_quotations' => $convertedQuotations,
+                'pending_quotations' => $acceptedQuotations
+                    - $convertedQuotations,
+                'conversion_rate' => $conversionRate,
+            ];
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function invoiceAging(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $today = now()->startOfDay();
+
+            $notDue = Invoice::whereNotIn('status', [
+                'paid',
+                'cancelled',
+            ])
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('due_date')
+                        ->orWhereDate('due_date', '>=', $today);
+                })
+                ->count();
+
+            $days1to30 = Invoice::whereNotIn('status', [
+                'paid',
+                'cancelled',
+            ])
+                ->whereDate(
+                    'due_date',
+                    '<',
+                    $today
+                )
+                ->whereDate(
+                    'due_date',
+                    '>=',
+                    $today->copy()->subDays(30)
+                )
+                ->count();
+
+            $days31to60 = Invoice::whereNotIn('status', [
+                'paid',
+                'cancelled',
+            ])
+                ->whereDate(
+                    'due_date',
+                    '<',
+                    $today->copy()->subDays(30)
+                )
+                ->whereDate(
+                    'due_date',
+                    '>=',
+                    $today->copy()->subDays(60)
+                )
+                ->count();
+
+            $days61to90 = Invoice::whereNotIn('status', [
+                'paid',
+                'cancelled',
+            ])
+                ->whereDate(
+                    'due_date',
+                    '<',
+                    $today->copy()->subDays(60)
+                )
+                ->whereDate(
+                    'due_date',
+                    '>=',
+                    $today->copy()->subDays(90)
+                )
+                ->count();
+
+            $days90Plus = Invoice::whereNotIn('status', [
+                'paid',
+                'cancelled',
+            ])
+                ->whereDate(
+                    'due_date',
+                    '<',
+                    $today->copy()->subDays(90)
+                )
+                ->count();
+
+            $this->response['msg'] = 'invoice aging summary';
+            $this->response['data'] = [
+                'not_due' => $notDue,
+                'days_1_to_30' => $days1to30,
+                'days_31_to_60' => $days31to60,
+                'days_61_to_90' => $days61to90,
+                'days_90_plus' => $days90Plus,
+            ];
+
+            return response()->json($this->response);
+        });
+    }
+
+    public function dealWinRate(Request $request)
+    {
+        return handleApiRequest(function () {
+
+            $closedDeals = Deal::whereIn('status', [
+                'won',
+                'lost',
+            ])->count();
+
+            $wonDeals = Deal::where(
+                'status',
+                'won'
+            )->count();
+
+            $winRate = $closedDeals > 0
+                ? round(
+                    ($wonDeals / $closedDeals) * 100,
+                    2
+                )
+                : 0;
+
+            $this->response['msg'] = 'deal win rate';
+            $this->response['data'] = [
+                'closed_deals' => $closedDeals,
+                'won_deals' => $wonDeals,
+                'lost_deals' => Deal::where(
+                    'status',
+                    'lost'
+                )->count(),
+                'win_rate' => $winRate,
+            ];
+
+            return response()->json($this->response);
+        });
+    }
 }

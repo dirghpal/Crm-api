@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\QuotationItemController;
 use App\Http\Controllers\Api\QuotationStatusHistoryController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\TaskController;
@@ -62,6 +63,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('follow-up/delete', [FollowUpController::class, 'delete']);
     Route::post('follow-up/my-follow-ups', [FollowUpController::class, 'myFollowUps']);
     Route::post('follow-up/upcoming', [FollowUpController::class, 'upcoming']);
+    Route::post('follow-up/overdue', [FollowUpController::class, 'overdue']);
+    Route::post('follow-up/my-follow-ups-summary', [FollowUpController::class, 'myFollowUpsSummary']);
 
     //activity 
     Route::post('activity/save', [ActivityController::class, 'save']);
@@ -124,6 +127,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('Quotation/my-quotations', [QuotationController::class, 'myQuotations']);
     Route::post('Quotation/convert-to-invoice', [QuotationController::class, 'convertToInvoice']);
 
+    //Qutation-item
+    Route::post('Quotation-item/save', [QuotationItemController::class, 'save']);
+    Route::post('Quotation-item/list', [QuotationItemController::class, 'list']);
+    Route::post('Quotation-item/detail', [QuotationItemController::class, 'detail']); 
+    Route::post('Quotation-item/update' , [QuotationItemController::class, 'update']);
+    Route::post('Quotation-item/delete' , [QuotationItemController::class, 'delete']);
+
     //Quotation Status History
     Route::post('quotation-status-history/list', [QuotationStatusHistoryController::class, 'list']);
     Route::post('quotation-status-history/detail', [QuotationStatusHistoryController::class, 'detail']);
@@ -166,7 +176,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     );
 
-
     //Dashboard
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
     Route::post('dashboard/sales-by-user', [DashboardController::class, 'salesByUser']);
@@ -181,6 +190,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('dashboard/monthly-revenue', [DashboardController::class, 'monthlyRevenue']);
     Route::post('dashboard/activities-by-user', [DashboardController::class, 'activitiesByUser']);
     Route::post('dashboard/notes-by-user', [DashboardController::class, 'notesByUser']);
+    Route::post('dashboard/leads-by-user', [DashboardController::class, 'leadsByUser']);
+    Route::post('dashboard/quotation-conversion-rate', [DashboardController::class, 'quotationConversionRate']);
+    Route::post('dashboard/quotation-invoice-summary', [DashboardController::class, 'quotationInvoiceSummary']);
+    Route::post('dashboard/invoice-aging', [DashboardController::class, 'invoiceAging']);
+    Route::post('dashboard/deal-win-rate', [DashboardController::class, 'dealWinRate']);
 });
 
 Route::get('/user', function (Request $request) {
